@@ -809,3 +809,36 @@ is answerable, and is the defect.
 **The fix:** `device_core_voltage_ceiling()` in `device.c` returns the model's
 real ceiling — 480 on BC04 and BC08, `asic_vol_max` elsewhere — and all five
 sites ask it. Found by an external review, not by us.
+
+
+## The web interface stopped answering while the miner kept hashing (fixed)
+
+**Where:** `main/http_server/http_server.c`, the server configuration.
+
+Reported by an owner running a BC04 on this firmware: after some hours the
+interface became unreachable while the miner carried on mining normally. Their
+log caught it, twenty hours into a run -- the websocket carrying it died
+moments after the server accepted another log client.
+
+`max_open_sockets` is 8 and `lru_purge_enable` was never set, so it defaulted
+to false. At eight held sockets the server refuses new connections instead of
+reclaiming the oldest, and it holds them for a long time: a browser tab killed
+without a close, a laptop asleep mid-request, a phone out of range. None of
+those send a FIN, so the slot stays occupied until the receive timeout expires.
+Several of them and the interface is simply gone.
+
+Mining never notices, because the stratum tasks own their own sockets. That is
+what makes this so hard to diagnose from outside: the miner is plainly
+working, and the web interface has vanished, so the natural suspicion falls on
+the network rather than on the miner.
+
+`lru_purge_enable = true` now, which is what it should always have been.
+
+**Not the same thing, and worth separating:** the same owner had set the same
+static IP on both the WiFi and Ethernet interfaces, to be reachable at one
+address whichever link was up. This firmware runs both interfaces at once --
+only the soft-AP is shut down, never the station -- so that puts two MACs on
+one address on one subnet, and upstream ARP tables flap between them. The
+symptom is intermittent unreachability that looks exactly like the bug above.
+A DHCP reservation upstream is the way to get one stable address; assigning it
+twice is not.

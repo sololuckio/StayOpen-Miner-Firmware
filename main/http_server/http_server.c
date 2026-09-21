@@ -3331,6 +3331,24 @@ esp_err_t start_rest_server(void * pvParameters)
     config.recv_wait_timeout = 30;
     config.send_wait_timeout = 30;
     config.max_open_sockets = 8;
+
+    /*
+     * Reclaim the oldest connection instead of refusing the newest.
+     *
+     * Without this the server stops answering once eight sockets are held,
+     * and it holds them for a long time: a browser tab killed without a
+     * close, a laptop that slept mid-request, a phone that walked out of
+     * range. None of those send a FIN, so the slot stays occupied until the
+     * receive timeout expires, and with several of them the interface simply
+     * stops responding.
+     *
+     * Mining is unaffected while this happens, because the stratum tasks own
+     * their own sockets -- which is what makes the symptom so confusing to
+     * diagnose from outside. The miner is plainly working, hashing away, and
+     * the web interface is simply gone. Reported by an owner running a BC04
+     * for twenty hours.
+     */
+    config.lru_purge_enable = true;
     config.max_uri_handlers = 48;
 
     esp_log_level_set("httpd_txrx", ESP_LOG_ERROR);
