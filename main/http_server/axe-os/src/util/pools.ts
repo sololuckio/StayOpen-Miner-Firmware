@@ -36,6 +36,13 @@ export const POOL_MODELS: PoolConfig[] = [
         value: 'americas.mining-dutch.nl:9996',
         type: 'BTC'
     },
+    {
+        id: 'sololuck_btc',
+        label: 'SoloLuck',
+        logo: '/pools/sololuck.svg',
+        value: 'stratum.sololuck.io:3333',
+        type: 'BTC'
+    },
 
     // LTC Pools
     {
